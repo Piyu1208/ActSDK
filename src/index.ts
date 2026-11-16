@@ -10,13 +10,14 @@ const weatherTool: ActTool = {
     }
 }
 
-function init() {
+async function init() {
     const agent: ActAgent = new ActBuilder()
     .setInstructions("You are an Agent in making.")
     .tool(weatherTool)
     .build();
 
-    agent.showInstructions();
+    const res = await agent.run('What is the weather in Mumbai and Delhi like?');
+    console.log(res);
 }
 
 init();
