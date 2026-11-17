@@ -25,6 +25,7 @@ export class ActAgent {
     toolMap;
     openai;
     MAX_LOOPS = 20;
+    interceptors;
     constructor(builder) {
         this.toolMap = new Map();
         this.openai = new OpenAI({
@@ -48,12 +49,21 @@ export class ActAgent {
         })).join('\n')}
         `;
         this.messageHistory = [];
+        this.interceptors = [];
     }
     builder() {
         return new ActBuilder();
     }
     showInstructions() {
         console.log(this.instructions);
+    }
+    attachInterceptor(interceptor) {
+        this.interceptors.push(interceptor);
+    }
+    notifyInterceptor(message) {
+        for (const interceptor of this.interceptors) {
+            interceptor(message);
+        }
     }
     async run(query) {
         // append user query to history
@@ -81,12 +91,16 @@ export class ActAgent {
                 role: 'assistant',
                 content: response.output_text
             });
+            this.notifyInterceptor({
+                role: 'assistant',
+                content: response.output_text
+            });
             // parse LLM Response
             const parsedResponse = JSON.parse(response.output_text);
             // if (parsedResponse.step === "output") :
             //       return history;
             if (parsedResponse.step.toLowerCase() === 'output') {
-                return this.messageHistory;
+                return this.messageHistory[this.messageHistory.length - 1];
             }
             // if (parsedResponse.step === "tool_request") :
             //    {toolName, input} = parsedResponse;
@@ -103,10 +117,22 @@ export class ActAgent {
                         role: 'developer',
                         content: `Error: tool with tool name ${tool} does not exist.`
                     });
+                    this.notifyInterceptor({
+                        role: 'developer',
+                        content: `Error: tool with tool name ${tool} does not exist.`
+                    });
                     continue;
                 }
                 const toolResult = await tool.executor(input);
                 this.messageHistory.push({
+                    role: 'developer',
+                    content: JSON.stringify({
+                        functionName,
+                        input,
+                        toolResult
+                    })
+                });
+                this.notifyInterceptor({
                     role: 'developer',
                     content: JSON.stringify({
                         functionName,

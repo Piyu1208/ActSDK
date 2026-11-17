@@ -12,6 +12,7 @@ async function init() {
         .setInstructions("You are an Agent in making.")
         .tool(weatherTool)
         .build();
+    agent.attachInterceptor((msg) => console.log(msg));
     const res = await agent.run('What is the weather in Mumbai and Delhi like?');
     console.log(res);
 }

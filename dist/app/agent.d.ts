@@ -9,6 +9,7 @@ export interface ActMessage {
     role: 'user' | 'assistant' | 'developer' | 'system';
     content: string;
 }
+export type Interceptor = (message: ActMessage) => void;
 export declare class ActBuilder {
     instructions: string | undefined;
     toolList: ActTool[];
@@ -23,9 +24,12 @@ export declare class ActAgent {
     private toolMap;
     private openai;
     private MAX_LOOPS;
+    private interceptors;
     constructor(builder: ActBuilder);
     builder(): ActBuilder;
     showInstructions(): void;
-    run(query: string): Promise<ActMessage[] | undefined>;
+    attachInterceptor(interceptor: Interceptor): void;
+    notifyInterceptor(message: ActMessage): void;
+    run(query: string): Promise<ActMessage | undefined>;
 }
 //# sourceMappingURL=agent.d.ts.map

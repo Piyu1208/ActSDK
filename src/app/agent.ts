@@ -14,6 +14,8 @@ export interface ActMessage {
     content: string
 }
 
+export type Interceptor = (message: ActMessage) => void
+
 export class ActBuilder {
     public instructions: string | undefined;
     public toolList: ActTool[];
@@ -45,6 +47,7 @@ export class ActAgent {
     private openai: OpenAI;
 
     private MAX_LOOPS = 20;
+    private interceptors: Interceptor[];
 
     constructor(builder: ActBuilder) {
         this.toolMap = new Map();
@@ -73,6 +76,7 @@ export class ActAgent {
         `;
 
         this.messageHistory = [];
+        this.interceptors = [];
     }
 
     builder() {
@@ -81,6 +85,16 @@ export class ActAgent {
 
     public showInstructions() {
         console.log(this.instructions);
+    }
+
+    public attachInterceptor(interceptor: Interceptor) {
+        this.interceptors.push(interceptor);
+    }
+
+    public notifyInterceptor(message: ActMessage) {
+        for (const interceptor of this.interceptors) {
+            interceptor(message);
+        }
     }
 
     public async run(query: string) {
@@ -114,6 +128,11 @@ export class ActAgent {
                 content: response.output_text
             });
 
+            this.notifyInterceptor({
+                role: 'assistant',
+                content: response.output_text                
+            })
+
             // parse LLM Response
             const parsedResponse = JSON.parse(response.output_text);
 
@@ -122,7 +141,7 @@ export class ActAgent {
             //       return history;
 
             if (parsedResponse.step.toLowerCase() === 'output') {
-                return this.messageHistory;
+                return this.messageHistory[this.messageHistory.length - 1];
             }
 
             // if (parsedResponse.step === "tool_request") :
@@ -145,6 +164,11 @@ export class ActAgent {
                         content: `Error: tool with tool name ${tool} does not exist.`
                     });
 
+                    this.notifyInterceptor({
+                        role: 'developer',
+                        content: `Error: tool with tool name ${tool} does not exist.`                        
+                    })
+
                     continue;
                 }
 
@@ -156,6 +180,15 @@ export class ActAgent {
                         input,
                         toolResult
                     })
+                });
+
+                this.notifyInterceptor({
+                    role: 'developer',
+                    content: JSON.stringify({
+                        functionName,
+                        input,
+                        toolResult
+                    })                    
                 })
             }
 

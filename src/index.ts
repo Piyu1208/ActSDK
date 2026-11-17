@@ -16,6 +16,8 @@ async function init() {
     .tool(weatherTool)
     .build();
 
+    agent.attachInterceptor((msg) => console.log(msg))
+
     const res = await agent.run('What is the weather in Mumbai and Delhi like?');
     console.log(res);
 }
