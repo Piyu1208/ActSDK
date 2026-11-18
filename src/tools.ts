@@ -1,7 +1,10 @@
+import "dotenv/config";
 import type { ActTool } from './app/agent.js';
 import axios from 'axios';
 import { exec } from 'node:child_process';
-import readline from 'node:readline/promises'
+import readline from 'node:readline/promises';
+import { tavily } from "@tavily/core";
+
 
 
 // --------------------------------------- Weather Tool ------------------------------------------------------
@@ -159,3 +162,22 @@ export const cliAccessTool: ActTool = {
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+// ------------------------------ Web Search Tool ------------------------------------------------------------------------------------
+
+export const webSearchTool: ActTool = {
+    name: 'webSearch',
+    description: 'Searches the web and fetches results.',
+    doc: 'webSearch(input: string): Response',
+    async executor(query: string) {
+        const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY as string });
+        const response = await tvly.search(query);
+        return JSON.stringify(response);
+    }
+}

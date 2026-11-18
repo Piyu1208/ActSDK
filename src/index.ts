@@ -1,6 +1,6 @@
 import { ActBuilder } from './app/agent.js';
 import type { ActAgent } from './app/agent.js';
-import { weatherTool, cliAccessTool } from './tools.js';
+import { weatherTool, cliAccessTool, webSearchTool } from './tools.js';
 
 
 
@@ -21,7 +21,15 @@ async function init() {
 
     weatherAgent.attachInterceptor((msg) => console.log(msg));
 
-    const res = await weatherAgent.run('Create an index.html file in my current project displaying the current weather of Delhi.');
+    const researchAgent: ActAgent = new ActBuilder() 
+        .setInstructions("You are a research agent.")
+        .tool(webSearchTool)
+        .handoff([codingAgent, weatherAgent])
+        .build('researchAgent');
+
+    researchAgent.attachInterceptor((msg) => console.log(msg));
+
+    const res = await researchAgent.run('Hey research about Narendra Modi and create a webpage about him, in my current folder. Basically create index.html and style it');
     console.log(res);
 }
 
