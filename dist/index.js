@@ -1,18 +1,18 @@
 import { ActBuilder } from './app/agent.js';
-const weatherTool = {
-    name: 'fetchWeather',
-    description: 'fetches realtime weather data',
-    doc: 'fetchWeather(cityName: string): Real time response',
-    async executor(input) {
-        return `The weather in ${input} is Cold.`;
-    }
-};
+import { weatherTool, cliAccessTool } from './tools.js';
 async function init() {
-    const agent = new ActBuilder()
-        .setInstructions("You are an Agent in making.")
+    const codingAgent = new ActBuilder()
+        .setInstructions('You are a coding agent.')
+        .tool(cliAccessTool)
+        .build('codingAgent');
+    codingAgent.attachInterceptor((msg) => console.log(msg));
+    const weatherAgent = new ActBuilder()
+        .setInstructions("You are a realtime weather fetching agent.")
         .tool(weatherTool)
-        .build();
-    const res = await agent.run('What is the weather in Mumbai and Delhi like?');
+        .handoff([codingAgent])
+        .build('weatherAgent');
+    weatherAgent.attachInterceptor((msg) => console.log(msg));
+    const res = await weatherAgent.run('Create an index.html file in my current project displaying the current weather of Delhi.');
     console.log(res);
 }
 init();
