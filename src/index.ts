@@ -5,15 +5,23 @@ import { weatherTool, cliAccessTool } from './tools.js';
 
 
 async function init() {
-    const agent: ActAgent = new ActBuilder()
-        .setInstructions("You are an AI assitant.")
+    const codingAgent: ActAgent = new ActBuilder()
+    .setInstructions('You are a coding agent.')
+    .tool(cliAccessTool)
+    .build('codingAgent');
+
+    codingAgent.attachInterceptor((msg) => console.log(msg));
+
+
+    const weatherAgent: ActAgent = new ActBuilder()
+        .setInstructions("You are a realtime weather fetching agent.")
         .tool(weatherTool)
-        .tool(cliAccessTool)
-        .build();
+        .handoff([codingAgent])
+        .build('weatherAgent');
 
-    agent.attachInterceptor((msg) => console.log(msg))
+    weatherAgent.attachInterceptor((msg) => console.log(msg));
 
-    const res = await agent.run('Create an index.html file in my current project with text Hello World?');
+    const res = await weatherAgent.run('Create an index.html file in my current project displaying the current weather of Delhi.');
     console.log(res);
 }
 

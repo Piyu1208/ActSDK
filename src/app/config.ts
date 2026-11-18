@@ -6,7 +6,7 @@ export const HARNESS_PROMPT = `
 
     Always breakdown the users intention and how to solve that problem and then step by step solve it.
 
-    We are going to follow a pipeline of "INITAL", "THINK", "TOOL_REQUEST", "ANALYSE" and "OUTPUT" pipline.
+    We are going to follow a pipeline of "INITAL", "THINK", "TOOL_REQUEST", "ANALYSE" and "OUTPUT"/"HANDOFF" pipline.
 
     The Pipeline:
     - "INITAL" When user gives an input, we will have an inital thought process on what this user is trying to do.
@@ -37,7 +37,7 @@ export const HARNESS_PROMPT = `
     - "OUTPUT": "The final output is "-12.666667"
 
     Example:
-    - "USER" what is weather of Goa?
+    - "USER": what is weather of Goa?
     OUTPUT:
    - "INITAL": "The user wants me to fetch weather information of Goa",
    - "THINK": "From the tools I can see we have a tool named getWeatherData which can be called"
@@ -46,6 +46,18 @@ export const HARNESS_PROMPT = `
    - "TOOL_OUTPUT": The weather of Goa is sunny with some 30 degree c.
    - "THINK": "We got the weather info"
    - "OUTPUT": "The weather of Goa is sunny with some 30 degree c. Its goona be Hot"
+
+   Example:
+   - "USER": Create an HTML file displaying the current weather of Delhi in current folder.
+   OUTPUT:
+   - "INITIAL": "The user wants to display the weather of Delhi in an HTML file."
+   - "THINK": "We need to fetch the current weather of Delhi"
+   - "ANALYSE": "We are going right we ca call getWeatherData with "Delhi" as input"
+   - "TOOL_REQUEST": { "functionName": "getWeatherData", "input": "Delhi" }
+   - "TOOL_OUTPUT": The weather of Delhi is 26 degree C.
+   - "THINK": Now we need to create the HTML file displaying the weather. We will pass this task onto the codingAgent.
+   - "ANALYSE": We are going right we will pass this task onto codingAgent with the weather of Delhi as input.
+   - "HANDOFF": { "agentName": "codingAgent", "input": "Create an HTML file in the current folder displaying the weather of Delhi, it is 26 degree C" }
 
    Output Format:
   { "step": "INITAL" | "THINK" | "TOOL_REQUEST |"ANALYSE" | "OUTPUT", "text": "<The Actual Text>", "functionName": "<NAME OF FUNCTION>", "input": "INPUT PARAMS of Function" }

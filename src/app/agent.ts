@@ -19,9 +19,11 @@ export type Interceptor = (message: ActMessage) => void
 export class ActBuilder {
     public instructions: string | undefined;
     public toolList: ActTool[];
+    public agentList: ActAgent[];
 
     constructor() {
         this.toolList = [];
+        this.agentList = [];
     }
 
     public tool(newTool: ActTool) {
@@ -29,8 +31,13 @@ export class ActBuilder {
         return this;
     }
 
-    public build() {
-        return new ActAgent(this);
+    public handoff(agents: ActAgent[]) {
+        this.agentList.push(...agents);
+        return this;
+    }
+
+    public build(name: string) {
+        return new ActAgent(this, name);
     }
 
     public setInstructions(instructions: string) {
@@ -41,16 +48,20 @@ export class ActBuilder {
 
 
 export class ActAgent {
+    public name;
     private instructions: string;
     private messageHistory: ActMessage[];
     private toolMap: Map<string, ActTool>;
+    private agentMap: Map<string, ActAgent>;
     private openai: OpenAI;
 
     private MAX_LOOPS = 20;
     private interceptors: Interceptor[];
 
-    constructor(builder: ActBuilder) {
+    constructor(builder: ActBuilder, name: string) {
+        this.name = name;
         this.toolMap = new Map();
+        this.agentMap = new Map();
         this.openai = new OpenAI({
             baseURL: 'https://aicredits.in/v1',
             apiKey: process.env.OPENAI_API_KEY
@@ -58,6 +69,10 @@ export class ActAgent {
 
         for (const t of builder.toolList) {
             this.toolMap.set(t.name, t)
+        }
+
+        for (const a of builder.agentList) {
+            this.agentMap.set(a.name, a);
         }
 
 
@@ -72,6 +87,11 @@ export class ActAgent {
             functionName: t.name,
             functionDescritption: t.description,
             functionDoc: t.doc
+        })).join('\n')}
+
+        Available Agents: 
+        ${builder.agentList.map(a => JSON.stringify({
+            agentName: a.name
         })).join('\n')}
         `;
 
@@ -154,19 +174,43 @@ export class ActAgent {
             //    toolResult = toolName(input);
             //    history.push(toolResult)
 
-            if (parsedResponse.step.toLowerCase() === 'tool_request') {
-                const { functionName, input } = parsedResponse;
-                const tool = this.toolMap.get(functionName)
 
-                if (!tool) {
+            if (parsedResponse.step.toLowerCase() === 'handoff') {
+                const { agentName, input } = parsedResponse;
+                const agent = this.agentMap.get(agentName) as ActAgent;
+
+                if (!agent) {
                     this.messageHistory.push({
                         role: 'developer',
-                        content: `Error: tool with tool name ${tool} does not exist.`
+                        content: `Error: agent with agent name ${agentName} does not exist.`
                     });
 
                     this.notifyInterceptor({
                         role: 'developer',
-                        content: `Error: tool with tool name ${tool} does not exist.`                        
+                        content: `Error: agent with agent name ${agentName} does not exist.`                        
+                    });
+
+                    continue;
+                }
+
+                const res = await agent.run(input);
+                console.log(res);
+                return;
+            }
+
+            if (parsedResponse.step.toLowerCase() === 'tool_request') {
+                const { functionName, input } = parsedResponse;
+                const tool = this.toolMap.get(functionName);
+
+                if (!tool) {
+                    this.messageHistory.push({
+                        role: 'developer',
+                        content: `Error: tool with tool name ${functionName} does not exist.`
+                    });
+
+                    this.notifyInterceptor({
+                        role: 'developer',
+                        content: `Error: tool with tool name ${functionName} does not exist.`                        
                     })
 
                     continue;
@@ -189,7 +233,7 @@ export class ActAgent {
                         input,
                         toolResult
                     })                    
-                })
+                });
             }
 
         }

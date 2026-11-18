@@ -13,19 +13,23 @@ export type Interceptor = (message: ActMessage) => void;
 export declare class ActBuilder {
     instructions: string | undefined;
     toolList: ActTool[];
+    agentList: ActAgent[];
     constructor();
     tool(newTool: ActTool): this;
-    build(): ActAgent;
+    handoff(agents: ActAgent[]): this;
+    build(name: string): ActAgent;
     setInstructions(instructions: string): this;
 }
 export declare class ActAgent {
+    name: string;
     private instructions;
     private messageHistory;
     private toolMap;
+    private agentMap;
     private openai;
     private MAX_LOOPS;
     private interceptors;
-    constructor(builder: ActBuilder);
+    constructor(builder: ActBuilder, name: string);
     builder(): ActBuilder;
     showInstructions(): void;
     attachInterceptor(interceptor: Interceptor): void;
