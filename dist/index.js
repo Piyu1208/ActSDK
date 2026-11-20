@@ -1,4 +1,5 @@
 import { ActBuilder } from './app/agent.js';
+import { OrchBuilder } from './app/orchestrator.js';
 import { weatherTool, cliAccessTool, webSearchTool } from './tools.js';
 async function init() {
     const codingAgent = new ActBuilder()
@@ -9,16 +10,18 @@ async function init() {
     const weatherAgent = new ActBuilder()
         .setInstructions("You are a realtime weather fetching agent.")
         .tool(weatherTool)
-        .handoff([codingAgent])
         .build('weatherAgent');
     weatherAgent.attachInterceptor((msg) => console.log(msg));
     const researchAgent = new ActBuilder()
         .setInstructions("You are a research agent.")
         .tool(webSearchTool)
-        .handoff([codingAgent, weatherAgent])
         .build('researchAgent');
     researchAgent.attachInterceptor((msg) => console.log(msg));
-    const res = await researchAgent.run('Hey research about Narendra Modi and create a webpage about him, in my current folder. Basically create index.html and style it');
+    const orchestrator = new OrchBuilder()
+        .handoff([codingAgent, weatherAgent, researchAgent])
+        .build();
+    orchestrator.attachInterceptor((msg) => console.log(msg));
+    const res = await orchestrator.run(`Hey what's the current weather of Kota like? Create a .txt file in my current folder displaying this information.`);
     console.log(res);
 }
 init();
