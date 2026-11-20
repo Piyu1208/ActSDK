@@ -1,6 +1,8 @@
+import "dotenv/config";
 import axios from 'axios';
 import { exec } from 'node:child_process';
 import readline from 'node:readline/promises';
+import { tavily } from "@tavily/core";
 // --------------------------------------- Weather Tool ------------------------------------------------------
 const WEATHER_CODES = {
     0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
@@ -110,4 +112,15 @@ export const cliAccessTool = {
     },
 };
 // ---------------------------------------------------------------------------------------------------------------------------------
+// ------------------------------ Web Search Tool ------------------------------------------------------------------------------------
+export const webSearchTool = {
+    name: 'webSearch',
+    description: 'Searches the web and fetches results.',
+    doc: 'webSearch(input: string): Response',
+    async executor(query) {
+        const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY });
+        const response = await tvly.search(query);
+        return JSON.stringify(response);
+    }
+};
 //# sourceMappingURL=tools.js.map
