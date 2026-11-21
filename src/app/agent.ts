@@ -26,8 +26,8 @@ export class ActBuilder {
         this.agentList = [];
     }
 
-    public tool(newTool: ActTool) {
-        this.toolList.push(newTool);
+    public tool(newTools: ActTool[]) {
+        this.toolList.push(...newTools);
         return this;
     }
 

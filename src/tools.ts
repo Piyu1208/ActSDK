@@ -91,13 +91,10 @@ export const weatherTool: ActTool = {
 // ---------------------------------------- Run Command Tool ---------------------------------------------------------
 
 
-
-
-
-
 const CLI_TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_CHARS = 10_000;
 const REQUIRE_APPROVAL = true; // set to false ONLY inside a sandbox (Docker/VM)
+const MIRROR_TO_CONSOLE = true; // stream the command's output to your terminal live
 
 async function askApproval(cmd: string): Promise<boolean> {
     const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
@@ -120,40 +117,62 @@ function truncate(s: string): string {
 export const cliAccessTool: ActTool = {
     name: 'execCli',
     description:
-        `Runs a CLI command on the user's machine (${process.platform}) and returns exit code, stdout and stderr. ` +
+        `Runs a CLI command on the user's machine (${process.platform}) and returns the command that was executed, ` +
+        `its working directory, duration, exit code, stdout and stderr. ` +
         `Commands time out after ${CLI_TIMEOUT_MS / 1000}s and cannot read stdin, so use non-interactive flags (e.g. -y). ` +
         `Each call starts in the same directory, so use full paths or chain commands like "cd dir && cmd".`,
     doc: 'execCli(cli: string): CLIResponse',
     async executor(cmd) {
         const command = cmd.trim();
-        if (!command) return 'There was an Error: no command provided.';
+        if (!command) return 'There was an Error: no command provided (nothing was executed).';
 
         if (REQUIRE_APPROVAL && !(await askApproval(command))) {
-            return 'The user rejected this command. Do not retry it; ask what they would like instead.';
+            return 'The user rejected this command, so it was NOT executed. Do not retry it; ask what they would like instead.';
         }
+
+        const cwd = process.cwd();
+        const startedAt = Date.now();
 
         return new Promise<string>((res) => {
             const child = exec(
                 command,
-                { timeout: CLI_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024, windowsHide: true },
+                { cwd, timeout: CLI_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024, windowsHide: true },
                 (err, stdout, stderr) => {
+                    const seconds = ((Date.now() - startedAt) / 1000).toFixed(2);
+                    const header =
+                        `command executed: ${command}\n` +
+                        `cwd: ${cwd}\n` +
+                        `duration: ${seconds}s\n`;
                     const body =
                         `stdout:\n${truncate(stdout.trim()) || '(empty)'}\n` +
                         `stderr:\n${truncate(stderr.trim()) || '(empty)'}`;
 
-                    if (!err) return res(`exit code: 0\n${body}`);
+                    if (!err) return res(`${header}exit code: 0\n${body}`);
 
-                    const e = err as NodeJS.ErrnoException & { killed?: boolean; code?: number | string };
+                    const e = err as NodeJS.ErrnoException & {
+                        killed?: boolean;
+                        code?: number | string;
+                        signal?: string;
+                    };
                     if (e.killed) {
-                        return res(`There was an Error: command timed out after ${CLI_TIMEOUT_MS / 1000}s and was killed.\n${body}`);
+                        return res(
+                            `${header}There was an Error: command timed out after ${CLI_TIMEOUT_MS / 1000}s and was killed ` +
+                            `(signal: ${e.signal ?? 'unknown'}). Output captured before the kill:\n${body}`
+                        );
                     }
                     if (e.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
-                        return res(`There was an Error: command produced too much output.\n${body}`);
+                        return res(`${header}There was an Error: command produced too much output.\n${body}`);
                     }
-                    // Non-zero exit: still return the output so the agent can react
-                    res(`exit code: ${e.code ?? 'unknown'}\n${body}`);
+                    // Non-zero exit: the command DID run; return output so the agent can react
+                    res(`${header}exit code: ${e.code ?? 'unknown'}\n${body}`);
                 }
             );
+
+            // Show the output in your console in real time (the callback still gets the full buffers)
+            if (MIRROR_TO_CONSOLE) {
+                child.stdout?.on('data', (d) => process.stderr.write(d));
+                child.stderr?.on('data', (d) => process.stderr.write(d));
+            }
 
             // Prompts like `npm init` fail fast instead of hanging until the timeout
             child.stdin?.end();
