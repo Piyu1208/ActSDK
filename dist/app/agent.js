@@ -9,8 +9,8 @@ export class ActBuilder {
         this.toolList = [];
         this.agentList = [];
     }
-    tool(newTool) {
-        this.toolList.push(newTool);
+    tool(newTools) {
+        this.toolList.push(...newTools);
         return this;
     }
     handoff(agents) {

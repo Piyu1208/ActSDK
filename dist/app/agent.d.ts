@@ -15,7 +15,7 @@ export declare class ActBuilder {
     toolList: ActTool[];
     agentList: ActAgent[];
     constructor();
-    tool(newTool: ActTool): this;
+    tool(newTools: ActTool[]): this;
     handoff(agents: ActAgent[]): this;
     build(name: string): ActAgent;
     setInstructions(instructions: string): this;
