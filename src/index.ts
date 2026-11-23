@@ -13,7 +13,7 @@ async function init() {
     .tool(fileTools)
     .build('codingAgent');
 
-    codingAgent.attachInterceptor((msg) => console.log(msg));
+    codingAgent.attachInterceptor((msg) => console.log(`Coding Agent...`));
 
 
     const weatherAgent: ActAgent = new ActBuilder()
@@ -37,8 +37,7 @@ async function init() {
 
     orchestrator.attachInterceptor((msg) => console.log(msg));
 
-    const res = await orchestrator.run(`Hey what's the current weather of Kota like and also give some information about Kota? Create a .txt file in my current folder displaying this information. I am using Windows powershell`);
-    console.log(res);
+    await orchestrator.chat();
 }
 
 init();
