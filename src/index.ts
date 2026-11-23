@@ -37,7 +37,8 @@ async function init() {
 
     orchestrator.attachInterceptor((msg) => console.log(msg));
 
-    await orchestrator.chat();
+    const res = await orchestrator.run('What is the weather like in Kota?');
+    console.log(res);
 }
 
 init();

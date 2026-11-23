@@ -55,7 +55,65 @@ export class Orchestrator {
             interceptor(message);
         }
     }
-    async run(query, chatHistory = []) {
+    async run(query) {
+        // append user query to history
+        this.messageHistory.push({
+            role: 'user',
+            content: query
+        });
+        for (let i = 0; i < this.MAX_LOOPS; i++) {
+            const response = await this.openai.responses.create({
+                model: 'gpt-4o-mini',
+                input: [
+                    { role: 'system', content: this.instructions },
+                    ...this.messageHistory.map(e => ({ role: e.role, content: e.content }))
+                ]
+            });
+            const assistantMsg = {
+                role: 'assistant',
+                content: response.output_text
+            };
+            this.messageHistory.push(assistantMsg);
+            this.notifyInterceptor(assistantMsg);
+            const parsedResponse = JSON.parse(response.output_text);
+            if (parsedResponse.step.toLowerCase() === 'output') {
+                return assistantMsg;
+            }
+            if (parsedResponse.step.toLowerCase() === 'handoff') {
+                const { agentName, input } = parsedResponse;
+                const agent = this.agentMap.get(agentName);
+                if (!agent) {
+                    this.messageHistory.push({
+                        role: 'developer',
+                        content: `Error: agent with name ${agentName} does not exist.`
+                    });
+                    this.notifyInterceptor({
+                        role: 'developer',
+                        content: `Error: agent with agent name ${agentName} does not exist.`
+                    });
+                    continue;
+                }
+                const agentRes = await agent.run(input);
+                this.messageHistory.push({
+                    role: 'developer',
+                    content: JSON.stringify({
+                        agentName,
+                        input,
+                        agentRes: agentRes.content
+                    })
+                });
+                this.notifyInterceptor({
+                    role: 'developer',
+                    content: JSON.stringify({
+                        agentName,
+                        input,
+                        agentRes: JSON.parse(agentRes.content).text
+                    })
+                });
+            }
+        }
+    }
+    async consoleRun(query, chatHistory = []) {
         // Working history for this run only. Handoffs and intermediate steps stay here.
         const messages = [
             ...chatHistory,
@@ -128,7 +186,7 @@ export class Orchestrator {
                     break;
                 try {
                     // run() adds the user query itself, so don't push it beforehand
-                    const result = await this.run(query, chatHistory);
+                    const result = await this.consoleRun(query, chatHistory);
                     if (!result) {
                         console.log('Agent: (no final output; max loops reached)\n');
                         continue;

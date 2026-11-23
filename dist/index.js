@@ -22,7 +22,8 @@ async function init() {
         .handoff([codingAgent, weatherAgent, researchAgent])
         .build();
     orchestrator.attachInterceptor((msg) => console.log(msg));
-    await orchestrator.chat();
+    const res = await orchestrator.run('What is the weather like in Kota?');
+    console.log(res);
 }
 init();
 //# sourceMappingURL=index.js.map

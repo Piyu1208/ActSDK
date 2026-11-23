@@ -18,7 +18,8 @@ export declare class Orchestrator {
     builder(): OrchBuilder;
     attachInterceptor(interceptor: Interceptor): void;
     notifyInterceptor(message: ActMessage): void;
-    run(query: string, chatHistory?: ActMessage[]): Promise<ActMessage | undefined>;
+    run(query: string): Promise<ActMessage | undefined>;
+    consoleRun(query: string, chatHistory?: ActMessage[]): Promise<ActMessage | undefined>;
     chat(): Promise<ActMessage[]>;
 }
 //# sourceMappingURL=orchestrator.d.ts.map
